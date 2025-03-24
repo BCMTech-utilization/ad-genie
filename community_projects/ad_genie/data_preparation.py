@@ -5,6 +5,7 @@ import requests
 from collections import defaultdict
 import json
 import argparse
+import tqdm
  
  
 def download_images(base_dir, retries=1, dest_dir="resources/images"):
@@ -26,6 +27,7 @@ def download_images(base_dir, retries=1, dest_dir="resources/images"):
         - Folder names categorize data into keys like "Men" and "Women" in the JSON output.
     """
     failed_links = []
+    download_try_data= [] #
     data_dict = defaultdict(dict)
     data_dict['Men'] = defaultdict(dict)
     data_dict['Women'] = defaultdict(dict)
@@ -59,20 +61,39 @@ def download_images(base_dir, retries=1, dest_dir="resources/images"):
                                             image_link = list(image_url.keys())[0]
                                             # Generate the file name
                                             image_name = f"{folder_name}_{csv_filename}_{row_number}_{image_num}.jpg"
-                                            # import ipdb; ipdb.set_trace()
-                                            download_path = os.path.join(dest_dir, image_name)
- 
-                                            # Download the image with retry logic
-                                            success = download_image_with_retry(image_link, download_path, retries)
-                                            if not success:
-                                                failed_links.append((image_link, download_path))
-                                            else:
-                                                if row[product_field] not in data_dict[folder_name].keys():
-                                                    data_dict[folder_name][row[product_field]] = []
-                                                data_dict[folder_name][row[product_field]].append(image_name)
+
+                                            # 다운로드 대상 데이터 저장
+                                            download_try_data.append({
+                                                "image_name": image_name, 
+                                                "image_link": image_link, 
+                                                "folder_name": folder_name,
+                                                "product_field": row[product_field],
+                                                })
+
+
                                     except (ValueError, KeyError) as e:
                                         print(f"Error processing row {row_number} in {file}: {e}")
- 
+    
+    # 이미지 다운로드 시작
+    for data in tqdm.tqdm(download_try_data) :
+        # 변수 꺼내오기
+        image_name= data["image_name"]
+        image_link= data["image_link"]
+        folder_name= data["folder_name"]
+        product_field= data['product_field']
+
+        download_path = os.path.join(dest_dir, image_name)
+        
+        # Download the image with retry logic
+        success = download_image_with_retry(image_link, download_path, retries)
+
+        if not success:
+            failed_links.append((image_link, download_path))
+        else:
+            if product_field not in data_dict[folder_name].keys():
+                data_dict[folder_name][product_field] = []
+            data_dict[folder_name][product_field].append(image_name)
+
     # Write all failed links to a file
     failed_links_file = os.path.join(base_dir, "failed_links.txt")
     with open(failed_links_file, 'w') as f:
@@ -87,13 +108,17 @@ def download_image_with_retry(url, save_path, retries):
     """
     Downloads an image from a URL with retry logic.
     """
+    # 요청 헤더값
+    header= {
+        "User-Agent": "Mozilla/5.0 (Windows NT10.0; Win64; x64)"
+    }
     try:
-        response = requests.get(url, stream=True, timeout=10)
+        response = requests.get(url, stream=True, timeout=10, headers=header)
         response.raise_for_status()
         with open(save_path, 'wb') as f:
             for chunk in response.iter_content(1024):
                 f.write(chunk)
-        print(f"Downloaded: {save_path}")
+        #print(f"Downloaded: {save_path}")
         return True
     except requests.RequestException as e:
         print(f"Failed for {url}: {e}")

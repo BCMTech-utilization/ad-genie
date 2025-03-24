@@ -16,6 +16,7 @@ resources/*.mp4
 # Packages and dependencies
 *.egg-info/
 hailo_clip_venv/
+community_projects/ad_genie/venv/
 
 # Build, cache, and coverage files
 build/

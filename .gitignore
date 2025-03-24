@@ -8,6 +8,8 @@ clip_app/__pycache__/
 resources/*.so
 resources/*.hef
 resources/*.mp4
+community_projects/ad_genie/resources/archive
+community_projects/ad_genie/resources/images
 
 # Logs and temp files
 *.log
